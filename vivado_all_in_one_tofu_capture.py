@@ -111,7 +111,7 @@ def generateTCLScript(tempTCLScriptName, startNum, endNum, simMode, simType):
         openRunCommand,
         f'{launchCommand}',
         f'set plaintexts "{PLAINTEXT_FILE_PATH}"',
-        f'set config_file "{os.path.join(VIVADO_PROJECT_DIRECTORY, "config.txt")}"',
+        f'set config_file "{os.path.join(VIVADO_PROJECT_SIM_PATH, "config.txt")}"',
         'set fh [open $plaintexts r]',
         r'set plaintexts [split [read $fh] "\n"]',
         'close $fh',
