@@ -1,7 +1,24 @@
 # vivado_all_in_one_tofu_capture.py - Logan Reichling - Start 2/15/25 - UC DaSec
+# Ver_9_15_25: Add Windows support
 # Ver_9_5_25: Fixed batching
 # Combines TOFU pipeline steps all into one mega script. Writes and uses temporary scripts when necessary
 # "pip install numpy h5py tqdm matplotlib reportlab" <-- before using
+
+import hashlib
+import os
+import re
+import subprocess
+import time
+import zipfile
+from datetime import datetime
+import h5py
+import matplotlib.pyplot as plt
+import numpy as np
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Image, Table, TableStyle
+from tqdm import tqdm
 
 # *****************************************************************
 # ASSUMPTIONS:
@@ -9,41 +26,45 @@
 #   * Simulation TYPE (RTL, POST_SYNTHESIS, or POST_IMPLEMENTATION, TIMING OR FUNCTIONAL)
 #       o MUST BE RUN ONCE in Vivado to create the VIVADO_PROJECT_SIM_PATH
 #   * Within tb_aes.v (or other file), the $dumpfile is just a file name, e.g. $dumpfile("test.vcd")
+#   * WINDOWS support assumes python3 on path has prereq packages installed
 
 # *****************************************************************
 # ----------------------- Script parameters -----------------------
 # ---------------------- Change before using! ---------------------
 # *****************************************************************
 
-SAVED_TRACE_BASE_DIRECTORY = r"/home/ubuntu/Desktop/secworks"  # Final folder will be here
-VIVADO_DIRECTORY           = r"/home/ubuntu/Xilinx/Vivado/2023.2"
-VIVADO_PROJECT_DIRECTORY   = r"/home/ubuntu/secworks"
-VIVADO_PROJECT_XPR_PATH    = r"/home/ubuntu/secworks/secworks.xpr"
-VIVADO_PROJECT_SIM_BASE    = r"/home/ubuntu/secworks/secworks.sim/sim_1"
+OS_TYPE                    = "WINDOWS"  # Or LINUX
+SAVED_TRACE_BASE_DIRECTORY = r"C:\Users\Logan Reichling\Desktop\New folder"  # Final folder will be here
+VIVADO_DIRECTORY           = r"D:\Xilinx\Vivado\2023.2"
+VIVADO_PROJECT_DIRECTORY   = r"D:\Vivado_Projects\secworks_tb_mod"
+VIVADO_PROJECT_XPR_PATH    = r"D:\Vivado_Projects\secworks_tb_mod\secworks_tb_mod.xpr"
+VIVADO_PROJECT_SIM_BASE    = r"D:\Vivado_Projects\secworks_tb_mod\secworks_tb_mod.sim\sim_1"  # SIM MUST BE RUN FIRST IN VIVADO
+SIMULATOR_NAME             = "xsim"  # xsim,
 SIMULATION_MODE            = "RTL"  # RTL, POST_SYNTHESIS, or POST_IMPLEMENTATION
 SIMULATION_TYPE            = "TIMING"  # TIMING or FUNCTIONAL, only matters if SIMULATION_MODE is not RTL
-PLAINTEXT_FILE_PATH        = r"/home/ubuntu/50000_plaintexts.txt"
-TOFU_DIRECTORY             = r"/home/ubuntu/tofu-master"
+PLAINTEXT_FILE_PATH        = r"C:\Users\Logan Reichling\Desktop\HardSide Project\50000_plaintexts.txt"
+TOFU_DIRECTORY             = r"C:\Users\Logan Reichling\Desktop\HardSide Project\tofu-master"
 TOFU_MODE                  = r"HammingDistance"  # HammingDistance or HammingWeight
-FIXED_KEY                  = [210, 213, 1, 104, 130, 131, 145, 67, 150, 158, 233, 162, 83, 167, 82, 225]
-TRACES_TO_COLLECT          = 10000
+FIXED_KEY                  = [43, 176, 21, 22, 40, 174, 210, 166, 171, 247, 21, 136, 9, 207, 79, 60]  # Align with SMAesH
+TRACES_TO_COLLECT          = 1000
 BATCH_SIZE                 = 1000
 
 # *****************************************************************
 # **************** Calculated Script Parameters *******************
 VIVADO_PROJECT_SIM_PATH    = VIVADO_PROJECT_SIM_BASE # Sim must be run once in Vivado; this path changes between sim modes
+sep = '/' if OS_TYPE == 'LINUX' else '\\'
 if SIMULATION_MODE == "RTL":
-    VIVADO_PROJECT_SIM_PATH += r"/behav/xsim"
+    VIVADO_PROJECT_SIM_PATH += rf"{sep}behav{sep}{SIMULATOR_NAME}"
 elif SIMULATION_MODE == "POST_SYNTHESIS":
     if SIMULATION_TYPE == "TIMING":
-        VIVADO_PROJECT_SIM_PATH += r"/synth/timing/xsim"
+        VIVADO_PROJECT_SIM_PATH += rf"{sep}synth{sep}timing{sep}{SIMULATOR_NAME}"
     else:
-        VIVADO_PROJECT_SIM_PATH += r"/synth/func/xsim"
+        VIVADO_PROJECT_SIM_PATH += rf"{sep}synth{sep}func{sep}{SIMULATOR_NAME}"
 elif SIMULATION_MODE == "POST_IMPLEMENTATION":
     if SIMULATION_TYPE == "TIMING":
-        VIVADO_PROJECT_SIM_PATH += r"/impl/timing/xsim"
+        VIVADO_PROJECT_SIM_PATH += rf"{sep}impl{sep}timing{sep}{SIMULATOR_NAME}"
     else:
-        VIVADO_PROJECT_SIM_PATH += r"/impl/func/xsim"
+        VIVADO_PROJECT_SIM_PATH += rf"{sep}impl{sep}func{sep}{SIMULATOR_NAME}"
 print(f"[INFO] -- Vivado sim path: {VIVADO_PROJECT_SIM_PATH}")
 if TRACES_TO_COLLECT < BATCH_SIZE:
     print(f"[WARN] -- BATCH_SIZE corrected to {TRACES_TO_COLLECT} (BS: {BATCH_SIZE} > TTC: {TRACES_TO_COLLECT})")
@@ -51,35 +72,32 @@ if TRACES_TO_COLLECT < BATCH_SIZE:
 
 # *****************************************************************
 
-import os
-import re
-import time
-import h5py
-import zipfile
-import hashlib
-import subprocess
-import numpy as np
-from tqdm import tqdm
-from datetime import datetime
-import matplotlib.pyplot as plt
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-
-
 def getVCDNumber(vcdFilePath):
     pattern = re.compile(r"^.+?(?P<vcdNum>\d+)\.vcd$")
     return int(pattern.match(vcdFilePath).group('vcdNum'))
 
 
 def generateStartScript(startScriptPath, tclScriptName):
-    scriptContents = [
-        '#!/bin/bash',
-        f'VIVADO_PATH="{VIVADO_DIRECTORY}"',
-        'source "$VIVADO_PATH/settings64.sh"',
-        f'vivado -mode tcl -source "{tclScriptName}"'
-    ]
+    if OS_TYPE == "LINUX":
+        scriptContents = [
+            '#!/bin/bash',
+            f'VIVADO_PATH="{VIVADO_DIRECTORY}"',
+            'source "$VIVADO_PATH/settings64.sh"',
+            f'vivado -mode tcl -source "{tclScriptName}" -quiet'
+        ]
+    elif OS_TYPE == "WINDOWS":
+        scriptContents = [
+            '@echo on',
+            'SETLOCAL',
+            f'set VIVADO_PATH="{VIVADO_DIRECTORY}"',
+            'call "%VIVADO_PATH%/settings64.bat"',
+            f'vivado -mode tcl -source "{tclScriptName}" -quiet',
+            'ENDLOCAL',
+            'exit'
+        ]
+    else:
+        print("OS not supported.")
+        exit(1)
     with open(startScriptPath, 'w') as script:
         for line in scriptContents:
             script.write(f"{line}\n")
@@ -106,12 +124,24 @@ def generateTCLScript(tempTCLScriptName, startNum, endNum, simMode, simType):
         openRunCommand = "open_run impl_1"
         launchCommand = f"launch_simulation -mode post-implementation -type {str.lower(simType)}"
 
+    if OS_TYPE == "LINUX":
+        projectPath = VIVADO_PROJECT_XPR_PATH
+        ptPath = PLAINTEXT_FILE_PATH
+        configPath = os.path.join(VIVADO_PROJECT_SIM_PATH, "config.txt")
+    elif OS_TYPE == "WINDOWS":
+        projectPath = VIVADO_PROJECT_XPR_PATH.replace('\\', '\\\\')
+        ptPath = PLAINTEXT_FILE_PATH.replace('\\', '\\\\')
+        configPath = os.path.join(VIVADO_PROJECT_SIM_PATH, "config.txt").replace('\\', '\\\\')
+    else:
+        print("OS_TYPE not supported.")
+        exit(1)
+
     scriptContents = [
-        f'open_project {VIVADO_PROJECT_XPR_PATH}',
+        f'open_project "{projectPath}"',
         openRunCommand,
         f'{launchCommand}',
-        f'set plaintexts "{PLAINTEXT_FILE_PATH}"',
-        f'set config_file "{os.path.join(VIVADO_PROJECT_SIM_PATH, "config.txt")}"',
+        f'set plaintexts "{ptPath}"',
+        f'set config_file "{configPath}"',
         'set fh [open $plaintexts r]',
         r'set plaintexts [split [read $fh] "\n"]',
         'close $fh',
@@ -132,7 +162,7 @@ def generateTCLScript(tempTCLScriptName, startNum, endNum, simMode, simType):
 
 
 def generateTOFUSettings(tofuSettingsFilePath, traceName):
-    jsonContents = [  # These can't be full filepaths because TOFU was coded poorly
+    jsonContents = [
         '{',
         f'    "vcdGlob": "{traceName}.vcd",',
         f'    "pickleGlob": "{traceName}.pickle",',
@@ -158,18 +188,19 @@ def generateTOFUSettings(tofuSettingsFilePath, traceName):
 
 
 def removeEmptyLinesOneFile(filepath):
-    with open(filepath, "r+") as vcd:
-        lines = vcd.readlines()
-        vcd.seek(0)
-        vcd.truncate(0)
+    with open(filepath, "r+") as vcdFileIn:
+        lines = vcdFileIn.readlines()
+        vcdFileIn.seek(0)
+        vcdFileIn.truncate(0)
         for line in lines:
             if line.strip():
-                vcd.write(line)
+                vcdFileIn.write(line)
 
 
 def ensureParametersCorrect():
     global SAVED_TRACE_BASE_DIRECTORY, VIVADO_DIRECTORY, VIVADO_PROJECT_DIRECTORY, VIVADO_PROJECT_XPR_PATH, \
-        VIVADO_PROJECT_SIM_PATH, PLAINTEXT_FILE_PATH, TOFU_DIRECTORY, TRACES_TO_COLLECT, SIMULATION_MODE
+        VIVADO_PROJECT_SIM_PATH, PLAINTEXT_FILE_PATH, TOFU_DIRECTORY, TRACES_TO_COLLECT, SIMULATION_MODE, OS_TYPE, \
+        SIMULATION_TYPE
     listOfParameters = [SAVED_TRACE_BASE_DIRECTORY, VIVADO_DIRECTORY, VIVADO_PROJECT_DIRECTORY, VIVADO_PROJECT_XPR_PATH,
                         VIVADO_PROJECT_SIM_PATH, PLAINTEXT_FILE_PATH, TOFU_DIRECTORY]
     exitFlag = False
@@ -177,20 +208,27 @@ def ensureParametersCorrect():
         if not os.path.exists(parameter):
             print(f"Parameter path: {parameter} not found!")
             exitFlag = True
-    with open(PLAINTEXT_FILE_PATH, 'r') as hexPlaintexts:
-        numberOfPlaintexts = len(hexPlaintexts.readlines())
+    with open(PLAINTEXT_FILE_PATH, 'r') as hexPlaintextsIn:
+        numberOfPlaintexts = len(hexPlaintextsIn.readlines())
         if numberOfPlaintexts < TRACES_TO_COLLECT:
             print(f"Not enough plaintexts for specified number of traces! {numberOfPlaintexts} < {TRACES_TO_COLLECT}")
+    SIMULATION_MODE = SIMULATION_MODE.upper()
     if SIMULATION_MODE not in ['RTL', 'POST_SYNTHESIS', 'POST_IMPLEMENTATION']:
         print(f"Simulation type not specified or incorrect, should be RTL, POST_SYNTHESIS, or POST_IMPLEMENTATION.")
         exitFlag = True
+    SIMULATION_TYPE = SIMULATION_TYPE.upper()
     if SIMULATION_MODE != "RTL":
         if SIMULATION_TYPE == "" or SIMULATION_TYPE not in ['TIMING', 'FUNCTIONAL']:
             print(f"Simulation type not specified or incorrect, should be TIMING or FUNCTIONAL.")
             exitFlag = True
+    OS_TYPE = OS_TYPE.upper()
+    if OS_TYPE not in ["WINDOWS", "LINUX"]:
+        print(f"OS not supported. Should be WINDOWS or LINUX")
+        exitFlag = True
     if exitFlag:
         print("One or more necessary parameters not found! Exiting...")
         exit(1)
+
 
 
 def loadData(datasetPath):
@@ -203,10 +241,42 @@ def loadData(datasetPath):
     return loadedTraces, loadedPlaintext, loadedKey
 
 
+def removeFile(filepath):
+    if OS_TYPE == "LINUX":
+        subprocess.run([f'rm -f "{filepath}"'], shell=True)
+    elif OS_TYPE == "WINDOWS":
+        subprocess.run(['del', '/f', '/q', f'{filepath}'], shell=True)
+
+
+def removeDir(dirpath):
+    if OS_TYPE == "LINUX":
+        subprocess.run([f'rm -rf "{dirpath}"'], shell=True)
+    elif OS_TYPE == "WINDOWS":
+        subprocess.run(['del', '/f', 's', '/q', f'{dirpath}'], shell=True)
+
+
+def moveFile(fromFilepath, toFileDir):
+    if OS_TYPE == "LINUX":
+        subprocess.run([f'mv {fromFilepath} {toFileDir}'], shell=True)
+    elif OS_TYPE == "WINDOWS":
+        subprocess.run(['move', f'{fromFilepath}', f'{toFileDir}', '>', 'NUL'], shell=True)
+
+
+def runVivadoScript(scriptLocation):
+    if scriptLocation is not None:
+        if OS_TYPE == "LINUX":
+            subprocess.run([f'{scriptLocation}'], shell=True, stdout=subprocess.DEVNULL)
+        elif OS_TYPE == "WINDOWS":
+            subprocess.run([rf'{scriptLocation}'], shell=True, stdout=subprocess.DEVNULL)
+    else:
+        print("Run_vivado script was not found.")
+        exit(1)
+
+
 def exportReproducibilityStats(outputPath, startingTime, endingTime, totalTiming, totalVCDTiming, totalEmptyLineTiming,
                                totalTOFUTiming, totalCombineTiming, intermediaryFileDir, generatedScriptsDir, datasetKey,
                                plaintextLen, startShFilePath, tclPath, jsonFilePath, outputTraceFilePath,
-                               decimalPlaintexts):
+                               decimalPlaintextsForTest):
     global SAVED_TRACE_BASE_DIRECTORY, VIVADO_DIRECTORY, VIVADO_PROJECT_DIRECTORY, VIVADO_PROJECT_XPR_PATH, \
         VIVADO_PROJECT_SIM_PATH, PLAINTEXT_FILE_PATH, TOFU_DIRECTORY
 
@@ -219,9 +289,9 @@ def exportReproducibilityStats(outputPath, startingTime, endingTime, totalTiming
         successfulCreationTest = False
         plaintextOrderingTest = False
     else:
-        for i2 in range(len(decimalPlaintexts)):
+        for i2 in range(len(decimalPlaintextsForTest)):
             for value in range(16):
-                if p[i2][value] != decimalPlaintexts[i2][value]:
+                if p[i2][value] != decimalPlaintextsForTest[i2][value]:
                     print(f"ERROR: Plaintext mismatch at i = {i2}:{value}")
                     plaintextOrderingTest = False
 
@@ -352,36 +422,45 @@ if __name__ == '__main__':
     ### 1. Make VCD Files using Vivado
     startVCDGenerationTime = time.time()
     tclFilePath = os.path.join(generationScripts, "launch_simulation.tcl")
-    generateStartScript(os.path.join(generationScripts, "run_vivado.sh"), tclFilePath)
+    if OS_TYPE == "LINUX":
+        generateStartScript(os.path.join(generationScripts, "run_vivado.sh"), tclFilePath)
+    elif OS_TYPE == "WINDOWS":
+        generateStartScript(os.path.join(generationScripts, "run_vivado.bat"), tclFilePath)
     for item in os.listdir(VIVADO_PROJECT_SIM_PATH):  # Remove leftovers
         itemPath = os.path.join(VIVADO_PROJECT_SIM_PATH, item)
         if os.path.isfile(itemPath):
             if item in ["config.txt"]:
-                subprocess.run([f'rm -f {itemPath}'], shell=True)
+                removeFile(itemPath)
             if itemPath[-4:] == ".vcd":
-                subprocess.run([f'rm -f {itemPath}'], shell=True)
+                removeFile(itemPath)
 
     # Batch Vivado to avoid memory leaks,
     batchesOfTraces     = TRACES_TO_COLLECT // BATCH_SIZE
     remainingTraceBatch = TRACES_TO_COLLECT - (batchesOfTraces * BATCH_SIZE)
-    subprocess.run([f'touch {os.path.join(VIVADO_PROJECT_DIRECTORY, "config.txt")}'], shell=True)
-    subprocess.run([f'chmod +x {os.path.join(generationScripts, "run_vivado.sh")}'], shell=True)
+    vivadoScriptPath = None
+    if OS_TYPE == "LINUX":
+        subprocess.run([f'touch {os.path.join(VIVADO_PROJECT_DIRECTORY, "config.txt")}'], shell=True)
+        subprocess.run([f'chmod +x {os.path.join(generationScripts, "run_vivado.sh")}'], shell=True)
+        vivadoScriptPath = os.path.join(generationScripts, "run_vivado.sh")
+    elif OS_TYPE == "WINDOWS":
+        subprocess.run(['copy', 'NUL', '/y', f'{os.path.join(VIVADO_PROJECT_DIRECTORY, "config.txt")}', '>', 'NUL'], shell=True)
+        vivadoScriptPath = os.path.join(generationScripts, "run_vivado.bat")
     for i in tqdm(range(batchesOfTraces)):
         print(f"Batch: {(i * BATCH_SIZE + 1)} to {((i + 1) * BATCH_SIZE + 1)}")
         generateTCLScript(tclFilePath, (i * BATCH_SIZE + 1), ((i + 1) * BATCH_SIZE + 1), SIMULATION_MODE, SIMULATION_TYPE)
         time.sleep(1)
-        subprocess.run([f'{os.path.join(generationScripts, "run_vivado.sh")}'], shell=True, stdout=subprocess.DEVNULL)
+        runVivadoScript(vivadoScriptPath)
     if remainingTraceBatch > 0:
         print(f"Remaining Traces: {(batchesOfTraces * BATCH_SIZE + 1)} to {(batchesOfTraces * BATCH_SIZE + remainingTraceBatch + 1)}")
         generateTCLScript(tclFilePath, (batchesOfTraces * BATCH_SIZE + 1),
                           (batchesOfTraces * BATCH_SIZE + remainingTraceBatch + 1), SIMULATION_MODE, SIMULATION_TYPE)
         time.sleep(1)
-        subprocess.run([f'{os.path.join(generationScripts, "run_vivado.sh")}'], shell=True, stdout=subprocess.DEVNULL)
-    subprocess.run([f'rm -f {os.path.join(VIVADO_PROJECT_SIM_PATH, "plaintextx.vcd")}'], shell=True)
-
-    # Account for any VCDs that Vivado missed (due to random segfaults, etc)
-    makeupRuns = list()
+        runVivadoScript(vivadoScriptPath)
+    removeFile(os.path.join(VIVADO_PROJECT_SIM_PATH, "plaintextx.vcd"))
+    print('Done with bulk capture')
+    # Account for any VCDs that Vivado missed (due to random segfaults, etc.)
     while True:  # Do while
+        makeupRuns = list()
         vcdFileList = list()
         for item in os.listdir(VIVADO_PROJECT_SIM_PATH):  # Not necessarily in order, need to sort
             itemPath = os.path.join(VIVADO_PROJECT_SIM_PATH, item)
@@ -389,24 +468,43 @@ if __name__ == '__main__':
                 if itemPath[-4:] == ".vcd":
                     vcdFileList.append(itemPath)
         vcdFileList = sorted(vcdFileList, key=getVCDNumber)[:TRACES_TO_COLLECT]
-        i = 1
-        vcdNum = 0
-        for vcd in vcdFileList:  # Assuming any makeup run isn't more than a batch
-            vcdNum = getVCDNumber(vcd)
-            if vcdNum != i:
-                makeupRuns.append([i, vcdNum])
-                runSize = vcdNum - i
-                i += (runSize + 1)
-            else:
-                i += 1
-        if vcdNum != TRACES_TO_COLLECT:
-            makeupRuns.append([vcdNum + 1, TRACES_TO_COLLECT + 1])
+
+        vcdNum = 1
+        collectedFileNums = list()
+        missingFileNums = list()
+        for i, vcd in enumerate(vcdFileList):  # Assuming any makeup run isn't more than a batch for memory purposes
+            collectedFileNums.append(getVCDNumber(vcd))
+        for i in range(1, TRACES_TO_COLLECT+1):
+            if i not in collectedFileNums:
+                missingFileNums.append(i)
+
+        missingFileNums = sorted(missingFileNums)
+        if len(missingFileNums) == 0:  # Case 0: Length is 0
+            pass
+        elif len(missingFileNums) == 1:  # Case 1: Length is 1
+            makeupRuns.append([missingFileNums[0], missingFileNums[0] + 1])
+        elif len(missingFileNums) > 1:  # Case 2: Length is 2+
+            runLength = 1
+            i = 0
+            while True:
+                if missingFileNums[i] == (missingFileNums[i + 1] - 1):  # Run start
+                    runLength += 1
+                    i += 1
+                else:
+                    makeupRuns.append([missingFileNums[i - runLength + 1], missingFileNums[i] + 1])
+                    runLength = 1
+                    i += 1
+                if i == len(missingFileNums) - 1:
+                    makeupRuns.append([missingFileNums[i - runLength + 1], missingFileNums[i] + 1])
+                    break
+        if len(makeupRuns) == 0:
+            break
         for makeupRun in makeupRuns:
             generateTCLScript(tclFilePath, makeupRun[0], makeupRun[1], SIMULATION_MODE, SIMULATION_TYPE)
             time.sleep(1)
-            subprocess.run([f'{os.path.join(generationScripts, "run_vivado.sh")}'], shell=True, stdout=subprocess.DEVNULL)
-        if len(makeupRuns) == 0:
-            break
+            runVivadoScript(vivadoScriptPath)
+        print(makeupRuns)
+        del makeupRuns
 
     endVCDGenerationTime = time.time()
     totalVCDGenerationTime = endVCDGenerationTime - startVCDGenerationTime
@@ -422,8 +520,8 @@ if __name__ == '__main__':
                 vcdFileList.append(itemPath)
                 removeEmptyLinesOneFile(itemPath)
     vcdFileList = sorted(vcdFileList, key=getVCDNumber)
-    for i in range(len(vcdFileList)):  # Cannot use wildcard move
-        subprocess.run([f'mv {vcdFileList[i]} {intermediateFiles}'], shell=True)
+    for i in range(len(vcdFileList)):
+        moveFile(vcdFileList[i], intermediateFiles)
         vcdFileList[i] = os.path.join(intermediateFiles, os.path.split(vcdFileList[i])[1])
     endEmptyLineTime = time.time()
     totalEmptyLineTime = endEmptyLineTime - startEmptyLineTime
@@ -436,8 +534,8 @@ if __name__ == '__main__':
         _, plaintextFileName = os.path.split(vcdFile)
         currentSettingsFile = os.path.join(intermediateFiles, "settings_example.json")
         generateTOFUSettings(currentSettingsFile, plaintextFileName[:-4])
-        subprocess.run([f'python3 "{os.path.join(TOFU_DIRECTORY, "parse.py")}" --settings "{currentSettingsFile}" >/dev/null'], shell=True)
-        subprocess.run([f'python3 "{os.path.join(TOFU_DIRECTORY, "synthesize.py")}" --settings "{currentSettingsFile}" >/dev/null'], shell=True)
+        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "parse.py")}', '--settings', f'{currentSettingsFile}'], shell=True, stdout=subprocess.DEVNULL)
+        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "synthesize.py")}', '--settings', f'{currentSettingsFile}'], shell=True, stdout=subprocess.DEVNULL)
     endTOFUTime = time.time()
     totalTOFUTime = endTOFUTime - startTOFUTime
     print(f"TOFU Generation took {totalTOFUTime:.2f} seconds")
@@ -469,7 +567,7 @@ if __name__ == '__main__':
             trace = h5File['leakages'][:]
             traces.append(trace)
     power_trace = np.concatenate(traces, axis=0)
-    outputTraceFile = os.path.join(outputDir, f"Synthetic{TOFU_MODE}_K1_{int((len(traces)/1000)+0.5)}k")
+    outputTraceFile = os.path.join(outputDir, f"Synthetic{TOFU_MODE}_K1_{len(traces)}")
     np.savez(outputTraceFile, power_trace=power_trace, plain_text=plain_text, key=key)
     endCombineTime = time.time()
     totalCombineTime = endCombineTime - startCombineTime
@@ -481,7 +579,7 @@ if __name__ == '__main__':
             itemPath = os.path.join(intermediateFiles, item)
             if os.path.isfile(itemPath):
                 zipFile.write(itemPath)
-    subprocess.run([f'rm -rf {intermediateFiles}'], shell=True)
+    removeDir(intermediateFiles)
 
     ### 6. Done! Export metadata and exit
     endTraceCollectionTime = time.time()
@@ -489,11 +587,8 @@ if __name__ == '__main__':
     traceCollectionTime = endTraceCollectionTime - startTraceCollectionTime
     exportReproducibilityStats(outputDir, startTime, endTime, traceCollectionTime, totalVCDGenerationTime,
                                totalEmptyLineTime, totalTOFUTime, totalCombineTime, intermediateFiles,
-                               generationScripts, key, TRACES_TO_COLLECT,
-                               os.path.join(generationScripts, "run_vivado.sh"), tclFilePath, currentSettingsFile,
-                               outputTraceFile, decimalPlaintexts)
+                               generationScripts, key, TRACES_TO_COLLECT, vivadoScriptPath, tclFilePath,
+                               currentSettingsFile, outputTraceFile, decimalPlaintexts)
     print(f"Trace collection took {traceCollectionTime:.2f} seconds")
     print(f"Trace collection finished at {datetime.now()}")
     print("All done! Exiting...")
-
-

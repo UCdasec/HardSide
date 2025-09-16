@@ -5,10 +5,16 @@ from enum import Enum
 
 
 class VCDEntryDictionary:
+    # Patterns
     VCD_SIGNAL_ENTRY_PATTERN = r"^\$var ([a-z]{1,}) (\d{1,}) (.+?) (.+?) (.*?) ?\$end$"
     VCD_VALUE_CHANGE_ENTRY_PATTERN = r"^(b.+? |\d|x|z)(.+)$"
     VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN = r"^(b[01]+? |\d)(.+)$"
     VCD_SIM_DELAY_ENTRY_PATTERN = r"^(#\d+)$"
+
+    # Constant Values
+    BINARY_TO_HEX = {"0000": "0", "0001": "1", "0010": "2", "0011": "3", "0100": "4", "0101": "5",  "0110": "6",
+                     "0111": "7", "1000": "8", "1001": "9", "1010": "A", "1011": "B", "1100": "C", "1101": "D",
+                     "1110": "E", "1111": "F"}
 
     class VCDType(Enum):
         Wire = "wire"
@@ -39,6 +45,7 @@ class VCDEntryDictionary:
         self.entries = list()
         self.identifierDictionary = dict()
         self.identifierTypeDictionary = dict()
+        self.identifierWidthDictionary = dict()
         self.compiledVCDEntryPattern        = re.compile(self.VCD_SIGNAL_ENTRY_PATTERN)
         self.compiledVCDValuePattern        = re.compile(self.VCD_VALUE_CHANGE_ENTRY_PATTERN)
         self.compiledVCDDelayPattern        = re.compile(self.VCD_SIM_DELAY_ENTRY_PATTERN)
@@ -60,14 +67,17 @@ class VCDEntryDictionary:
         self.entries.append(VCDEntryDictionary.VCDEntry(newEntryType, width, identifier, name, depth))
         self.identifierDictionary[identifier] = name  # Identifier is assumed unique while the name is usually not
         self.identifierTypeDictionary[identifier] = newEntryType
+        self.identifierWidthDictionary[identifier] = width
         return None
 
 if __name__ == "__main__":
     # Parameters
     includeUnknownAndFloatingValues = False
     includeDelayValues              = True
-    includeSingleBitZeroValues      = False
-    stopAtTimestamp = 225  # None or a number corresponding to the HW timestamp
+    includeZeroValues               = False
+    extendBinaryValuesToWidth       = True
+    finalValueFormat = 'hex'  # Options: hex, binary, TODO: decimal, octal,
+    stopAtTimestamp = 5  # None or a number corresponding to the HW timestamp
     vcdFilePath = r"C:\Users\Logan Reichling\Desktop\smaesh_plaintext1.vcd"
 
     # Start code
@@ -98,16 +108,35 @@ if __name__ == "__main__":
         if potentialMatch is not None:
             binaryValue, identifier = potentialMatch.groups()
             binaryValue = binaryValue.strip()
-            if binaryValue in ["b0", "0"] and not includeSingleBitZeroValues:
+            if binaryValue in ["b0", "0"] and not includeZeroValues:
                 continue
-            translatedLine = f"Line {i+1}: {vcdReader1.identifierTypeDictionary[identifier].value} {vcdReader1.identifierDictionary[identifier]} {identifier} {binaryValue}"
+            if binaryValue[0] == "b" and extendBinaryValuesToWidth:
+                binValueFullWidth = vcdReader1.identifierWidthDictionary[identifier]
+                binaryValue = binaryValue[1:]
+                binaryValue = f"b{'0'*(binValueFullWidth - len(binaryValue))}{binaryValue}"
+
+            if finalValueFormat.lower() == 'binary':
+                finalValue = binaryValue
+            elif finalValueFormat.lower() == 'hex':
+                if binaryValue[0] == 'b':
+                    finalValue = hex(int(binaryValue[1:], 2))[2:]
+                    if extendBinaryValuesToWidth:
+                        binValueFullWidth = vcdReader1.identifierWidthDictionary[identifier]
+                        finalValue = f"0x{'0'*((binValueFullWidth // 4) - len(finalValue))}{finalValue}".upper()
+                else:
+                    finalValue = binaryValue
+
+            signalType = vcdReader1.identifierTypeDictionary[identifier].value
+            signalName = vcdReader1.identifierDictionary[identifier]
+            translatedLine = f"Line {i+1}: {signalType} {signalName} {identifier} {finalValue}"  #
             finishedLines.append(translatedLine)
+
         else:  # potentialMatch is None:
             potentialDelayMatch = re.match(vcdReader1.compiledVCDDelayPattern, line)
             if potentialDelayMatch is not None:
                 if includeDelayValues:
                     delayValue = potentialDelayMatch.groups()[0]
-                    translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter}"
+                    translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} --------------------------------------"
                     finishedLines.append(translatedLine)
                 if stopAtTimestamp is not None:
                     if counter == stopAtTimestamp:
