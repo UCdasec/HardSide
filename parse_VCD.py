@@ -20,6 +20,7 @@ class VCDEntryDictionary:
     class VCDType(Enum):
         Wire = "wire"
         Reg = "reg"
+        Parameter = "parameter"
 
     class VCDEntry:
         vcdType = None
@@ -59,6 +60,8 @@ class VCDEntryDictionary:
             newEntryType = VCDEntryDictionary.VCDType.Wire
         elif entryType.lower() == "reg":
             newEntryType = VCDEntryDictionary.VCDType.Reg
+        elif entryType.lower() == "parameter":
+            newEntryType = VCDEntryDictionary.VCDType.Parameter
         else:
             raise ValueError("entryType not 'wire' or 'reg'!")
         assert type(width) == int, "Type of width is not int"
@@ -77,14 +80,14 @@ if __name__ == "__main__":
     includeUnknownAndFloatingValues = False
     includeDelayValuesAndTimestamps = True
     finalValueFormat                = 'hex'  # Options: hex, binary, TODO: decimal, octal,
-    stopAtTimestamp                 = 506  # None or a number corresponding to the HW timestamp
+    stopAtTimestamp                 = None  # None or a number corresponding to the HW timestamp
     timestampLineVisualFillToLength = 90
-    includeZeroValues               = False
+    includeZeroValues               = True
     extendBinaryValuesToWidth       = True
     includeShapValueList            = True
 
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\smaesh_syn_hw_plaintext1.vcd"
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\smaesh_syn_hw_plaintext1_translated.vcd"
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\plaintext1.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\plaintext1_translate.vcd"
     optionalShapValueList = r".\shapValueList.txt"
 
     # Check params
@@ -111,7 +114,8 @@ if __name__ == "__main__":
                 cGroups = maybeMatch.groups()
                 try:
                     vcdReader1.addEntry(cGroups[0], int(cGroups[1]), cGroups[2], cGroups[3], cGroups[4])
-                except ValueError:
+                except ValueError as err:
+                    print(err)
                     print(line)
                     print(cGroups)
                     exit(1)
