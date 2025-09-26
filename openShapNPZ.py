@@ -21,23 +21,27 @@ def loadNpzFile(file_name):
 
 
 if __name__ == "__main__":
-    shapValues = loadNpzFile(r"C:\Users\Logan Reichling\Desktop\shap_restore_pvHW.npz")
-    # for i, value in enumerate(shapValues):
-    #     print(f"{i}: {value:.2f}")
+    shapValues = loadNpzFile(r"shap_restore_smaeshHWPostSyn_b2_2.npz")
+    with open("shapValueList.txt", "w") as outFile:
+        for i, value in enumerate(shapValues):
+            print(f"{i}: {value:.2f}")
+            outFile.write(f"{value:.2f}\n")
 
     # Create figures of data
     plt.rcParams.update({'font.size': 16})
     plt.figure(figsize=(4, 3))
-    plt.plot(np.arange(0, 26), shapValues[:26], label="Mean SHAP Value")
-    plt.tight_layout(rect=(-0.04,0.02,1,1))
+    plt.plot(np.arange(0, 505), shapValues, label="Mean SHAP Value")
+    # plt.tight_layout(rect=(-0.04,0.02,1,1))
+    plt.tight_layout(pad=1.6)
     plt.margins(x=0)
     plt.xlabel("Timestamp")
     plt.ylabel("Mean |SHAP Value|")
-    xTicks = [0, 5, 10, 15, 20, 25]
+    xTicks = [0, 125, 250, 375, 500]
     plt.xticks(xTicks, xTicks)
-    yTicks = [0, 25000, 50000, 75000, 90000]
-    plt.yticks(yTicks, ["0", "25k", "50k", "75k", "100k"])
+    yTicks = [0, 1000, 2000, 3000, 4000, 5000]
+    plt.yticks(yTicks, ["0", "1000", "2000", "3000", "4000", "5000"])
     # plt.legend(loc='upper right')
-    plt.savefig("./gen/projectvault_rtl_hw_shap.pdf")
+    plt.savefig("./gen/smaesh_syn_hw_shap.pdf")
+    plt.show()
     plt.clf()
 

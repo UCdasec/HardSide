@@ -1,5 +1,6 @@
 # parse_VCD.py - Logan Reichling - Start 8/27/25 - UC DaSec
 # Applies various filters to allow for easier VCD processing
+import os.path
 import re
 from enum import Enum
 
@@ -70,20 +71,41 @@ class VCDEntryDictionary:
         self.identifierWidthDictionary[identifier] = width
         return None
 
+# Main
 if __name__ == "__main__":
     # Parameters
     includeUnknownAndFloatingValues = False
-    includeDelayValues              = True
+    includeDelayValuesAndTimestamps = True
+    finalValueFormat                = 'hex'  # Options: hex, binary, TODO: decimal, octal,
+    stopAtTimestamp                 = 506  # None or a number corresponding to the HW timestamp
+    timestampLineVisualFillToLength = 90
     includeZeroValues               = False
     extendBinaryValuesToWidth       = True
-    finalValueFormat = 'hex'  # Options: hex, binary, TODO: decimal, octal,
-    stopAtTimestamp = 5  # None or a number corresponding to the HW timestamp
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\smaesh_plaintext1.vcd"
+    includeShapValueList            = True
+
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\smaesh_syn_hw_plaintext1.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\smaesh_syn_hw_plaintext1_translated.vcd"
+    optionalShapValueList = r".\shapValueList.txt"
+
+    # Check params
+    if includeShapValueList and not (os.path.exists(optionalShapValueList) and os.path.isfile(optionalShapValueList)):
+        print("SHAP value printout enabled with invalid shap value list path provided.")
+        exit(1)
 
     # Start code
+    # Read optional shap value list
+    shapValueList = list()
+    if includeShapValueList:
+        with open(optionalShapValueList, "r") as inFile1:
+            for line in inFile1.readlines():
+                shapValueLine = line.strip()
+                if shapValueLine != "":
+                    shapValueList.append(shapValueLine)
+
+    # Read vcd declaration section and build dictionary
     vcdReader1 = VCDEntryDictionary()
-    with open(vcdFilePath, "r") as inFile:
-        for line in inFile.readlines():
+    with open(vcdFilePath, "r") as inFile2:
+        for line in inFile2.readlines():
             maybeMatch = re.match(vcdReader1.compiledVCDEntryPattern, line)
             if maybeMatch is not None:
                 cGroups = maybeMatch.groups()
@@ -94,10 +116,9 @@ if __name__ == "__main__":
                     print(cGroups)
                     exit(1)
 
-    selectedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\smaesh_plaintext1.vcd"  # From same VCD as above
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\smaesh_plaintext1_translated.vcd"
-    with open(selectedVCDLinesPath, "r") as inFile2:
-        linesToTranslate = inFile2.readlines()
+    # Read VCD value lines and translate identifiers and print nicely
+    with open(vcdFilePath, "r") as inFile3:
+        linesToTranslate = inFile3.readlines()
     finishedLines = list()
     counter = 0
     for i, line in enumerate(linesToTranslate):
@@ -119,12 +140,14 @@ if __name__ == "__main__":
                 finalValue = binaryValue
             elif finalValueFormat.lower() == 'hex':
                 if binaryValue[0] == 'b':
-                    finalValue = hex(int(binaryValue[1:], 2))[2:]
+                    finalValue = hex(int(binaryValue[1:], 2))[2:]  # TODO: Identify cases where binary numbers have internal floating signals
                     if extendBinaryValuesToWidth:
                         binValueFullWidth = vcdReader1.identifierWidthDictionary[identifier]
                         finalValue = f"0x{'0'*((binValueFullWidth // 4) - len(finalValue))}{finalValue}".upper()
                 else:
                     finalValue = binaryValue
+            else:
+                finalValue = binaryValue
 
             signalType = vcdReader1.identifierTypeDictionary[identifier].value
             signalName = vcdReader1.identifierDictionary[identifier]
@@ -134,9 +157,14 @@ if __name__ == "__main__":
         else:  # potentialMatch is None:
             potentialDelayMatch = re.match(vcdReader1.compiledVCDDelayPattern, line)
             if potentialDelayMatch is not None:
-                if includeDelayValues:
+                if includeDelayValuesAndTimestamps:
                     delayValue = potentialDelayMatch.groups()[0]
-                    translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} --------------------------------------"
+                    if includeShapValueList and len(shapValueList) != 0:  # Assume correct shap list is provided
+                        translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} - SHAP: [{shapValueList[counter]}] "
+                    else:
+                        translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} "
+                    if len(translatedLine) < timestampLineVisualFillToLength:
+                        translatedLine += (timestampLineVisualFillToLength - len(translatedLine)) * "-"
                     finishedLines.append(translatedLine)
                 if stopAtTimestamp is not None:
                     if counter == stopAtTimestamp:
