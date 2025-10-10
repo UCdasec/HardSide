@@ -534,8 +534,8 @@ if __name__ == '__main__':
         _, plaintextFileName = os.path.split(vcdFile)
         currentSettingsFile = os.path.join(intermediateFiles, "settings_example.json")
         generateTOFUSettings(currentSettingsFile, plaintextFileName[:-4])
-        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "parse.py")}', '--settings', f'{currentSettingsFile}'], shell=True, stdout=subprocess.DEVNULL)
-        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "synthesize.py")}', '--settings', f'{currentSettingsFile}'], shell=True, stdout=subprocess.DEVNULL)
+        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "parse.py")}', '--settings', f'{currentSettingsFile}'], shell=False, stdout=subprocess.DEVNULL)
+        subprocess.run(['python3', f'{os.path.join(TOFU_DIRECTORY, "synthesize.py")}', '--settings', f'{currentSettingsFile}'], shell=False, stdout=subprocess.DEVNULL)
     endTOFUTime = time.time()
     totalTOFUTime = endTOFUTime - startTOFUTime
     print(f"TOFU Generation took {totalTOFUTime:.2f} seconds")

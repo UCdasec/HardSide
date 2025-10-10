@@ -2,15 +2,17 @@
 # Applies various filters to allow for easier VCD processing
 import os.path
 import re
+from collections import defaultdict
 from enum import Enum
 
 
 class VCDEntryDictionary:
     # Patterns
-    VCD_SIGNAL_ENTRY_PATTERN = r"^\$var ([a-z]{1,}) (\d{1,}) (.+?) (.+?) (.*?) ?\$end$"
-    VCD_VALUE_CHANGE_ENTRY_PATTERN = r"^(b.+? |\d|x|z)(.+)$"
-    VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN = r"^(b[01]+? |\d)(.+)$"
-    VCD_SIM_DELAY_ENTRY_PATTERN = r"^(#\d+)$"
+    VCD_ENTRY_PATTERN                       = r"^\$var ([a-z]{1,}) (\d{1,}) (.+?) (.+?) (.*?) ?\$end$"
+    VCD_VALUE_CHANGE_ENTRY_PATTERN          = r"^(b.+? |\d|x|z)(.+)$"
+    VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN  = r"^(b[01]+? |\d)(.+)$"
+    VCD_DELAY_ENTRY_PATTERN                 = r"^(#\d+)$"
+    VCD_SCOPE_DEFINITION_PATTERN            = r"^\$scope .+? (.+?) \$end$"
 
     # Constant Values
     BINARY_TO_HEX = {"0000": "0", "0001": "1", "0010": "2", "0011": "3", "0100": "4", "0101": "5",  "0110": "6",
@@ -40,21 +42,22 @@ class VCDEntryDictionary:
     entries = None # list()  # of VCDEntry objects
     identifierDictionary = None # dict()  # {"id":"name", ...}
     identifierTypeDictionary = None # dict()  # {"id":"type", ...}
+    identifierModuleDictionary = None # dict()  # {"id":"module_name", ...}
     compiledVCDEntryPattern = None
     compiledVCDValuePattern = None
 
     def __init__(self):
         self.entries = list()
-        self.identifierDictionary = dict()
-        self.identifierTypeDictionary = dict()
+        self.identifierDictionary = defaultdict(list)
+        self.identifierTypeDictionary = defaultdict(list)
         self.identifierWidthDictionary = dict()
-        self.compiledVCDEntryPattern        = re.compile(self.VCD_SIGNAL_ENTRY_PATTERN)
+        self.compiledVCDEntryPattern        = re.compile(self.VCD_ENTRY_PATTERN)
         self.compiledVCDValuePattern        = re.compile(self.VCD_VALUE_CHANGE_ENTRY_PATTERN)
-        self.compiledVCDDelayPattern        = re.compile(self.VCD_SIM_DELAY_ENTRY_PATTERN)
+        self.compiledVCDDelayPattern        = re.compile(self.VCD_DELAY_ENTRY_PATTERN)
         self.compiledVCDValueNoFloatPattern = re.compile(self.VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN)
 
     # Methods
-    def addEntry(self, entryType:str, width:int, identifier:str, name:str, depth:str):
+    def addSignalEntry(self, entryType:str, width:int, identifier:str, name:str, depth:str):
         assert type(entryType) == str, "Type of entryType is not str."
         if entryType.lower() == "wire":
             newEntryType = VCDEntryDictionary.VCDType.Wire
@@ -68,10 +71,17 @@ class VCDEntryDictionary:
         assert type(identifier) == str, "Type of identifier is not str"
         assert type(name) == str, "Type of name is not str"
         assert type(depth) == str, "Type of depth is not str"
-        self.entries.append(VCDEntryDictionary.VCDEntry(newEntryType, width, identifier, name, depth))
-        self.identifierDictionary[identifier] = name  # Identifier is assumed unique while the name is usually not
-        self.identifierTypeDictionary[identifier] = newEntryType
-        self.identifierWidthDictionary[identifier] = width
+        # self.entries.append(VCDEntryDictionary.VCDEntry(newEntryType, width, identifier, name, depth))
+
+        if len(self.identifierDictionary[identifier]) == 0:
+            self.identifierDictionary[identifier].append(name)
+            self.identifierTypeDictionary[identifier].append(newEntryType)
+            self.identifierWidthDictionary[identifier] = width
+        else:
+            if name not in self.identifierDictionary[identifier]:
+                self.identifierDictionary[identifier].append(name)
+                self.identifierTypeDictionary[identifier].append(newEntryType)
+                self.identifierWidthDictionary[identifier] = width
         return None
 
 # Main
@@ -84,15 +94,18 @@ if __name__ == "__main__":
     timestampLineVisualFillToLength = 90
     includeZeroValues               = True
     extendBinaryValuesToWidth       = True
-    includeShapValueList            = True
+    includeShapValueList            = False
 
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\plaintext1.vcd"
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\plaintext1_translate.vcd"
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\New folder\plaintext5.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\New folder\plaintext5_translated.vcd"
     optionalShapValueList = r".\shapValueList.txt"
 
     # Check params
     if includeShapValueList and not (os.path.exists(optionalShapValueList) and os.path.isfile(optionalShapValueList)):
         print("SHAP value printout enabled with invalid shap value list path provided.")
+        exit(1)
+    if vcdFilePath == savedTranslatedVCDLinesPath:
+        print("vcdFilePath and savedTranslatedVCDLinesPath is the same!")
         exit(1)
 
     # Start code
@@ -113,7 +126,7 @@ if __name__ == "__main__":
             if maybeMatch is not None:
                 cGroups = maybeMatch.groups()
                 try:
-                    vcdReader1.addEntry(cGroups[0], int(cGroups[1]), cGroups[2], cGroups[3], cGroups[4])
+                    vcdReader1.addSignalEntry(cGroups[0], int(cGroups[1]), cGroups[2], cGroups[3], cGroups[4])
                 except ValueError as err:
                     print(err)
                     print(line)
@@ -133,13 +146,14 @@ if __name__ == "__main__":
         if potentialMatch is not None:
             binaryValue, identifier = potentialMatch.groups()
             binaryValue = binaryValue.strip()
+
+            # Value modification subsection
             if binaryValue in ["b0", "0"] and not includeZeroValues:
                 continue
             if binaryValue[0] == "b" and extendBinaryValuesToWidth:
                 binValueFullWidth = vcdReader1.identifierWidthDictionary[identifier]
                 binaryValue = binaryValue[1:]
                 binaryValue = f"b{'0'*(binValueFullWidth - len(binaryValue))}{binaryValue}"
-
             if finalValueFormat.lower() == 'binary':
                 finalValue = binaryValue
             elif finalValueFormat.lower() == 'hex':
@@ -147,15 +161,21 @@ if __name__ == "__main__":
                     finalValue = hex(int(binaryValue[1:], 2))[2:]  # TODO: Identify cases where binary numbers have internal floating signals
                     if extendBinaryValuesToWidth:
                         binValueFullWidth = vcdReader1.identifierWidthDictionary[identifier]
-                        finalValue = f"0x{'0'*((binValueFullWidth // 4) - len(finalValue))}{finalValue}".upper()
+                        finalValue = "0x"+f"{'0'*((binValueFullWidth // 4) - len(finalValue))}{finalValue}".upper()
                 else:
                     finalValue = binaryValue
             else:
                 finalValue = binaryValue
+            # END Value modification subsection
 
-            signalType = vcdReader1.identifierTypeDictionary[identifier].value
-            signalName = vcdReader1.identifierDictionary[identifier]
-            translatedLine = f"Line {i+1}: {signalType} {signalName} {identifier} {finalValue}"  #
+            signalTypes = vcdReader1.identifierTypeDictionary[identifier]
+            signalTypeStr = list()
+            for signalType in signalTypes:
+                signalTypeStr.append(signalType.value)
+            signalNames = list(dict.fromkeys(vcdReader1.identifierDictionary[identifier]))
+            signalNames = signalNames if len(signalNames) > 1 else signalNames[0]
+            signalTypeStr = signalTypeStr if len(signalTypeStr) > 1 else signalTypeStr[0]
+            translatedLine = f"Line {i+1}: {signalTypeStr} {signalNames} {identifier} {finalValue}"
             finishedLines.append(translatedLine)
 
         else:  # potentialMatch is None:
