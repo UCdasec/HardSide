@@ -27,12 +27,12 @@ if __name__ == "__main__":
     yStepSize = 500
     datasets = [
         r"C:\Users\Logan Reichling\Desktop\HardSide Project\SMAesH_wo_endian_reverse_and_le_key_POST_SYNTHESIS_FUNCTIONAL_SyntheticHammingWeight_K1_50k.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut1.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut2.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut3.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut4.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut5.npz",
-        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut6.npz"
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut1_new.npz",
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut2_new.npz",
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut3_new.npz",
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut4_new.npz",
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut5_new.npz",
+        r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\SMAesHHW_LittleEndian_LEKey_PostSyn_K1_50000_Cut6_new.npz",
     ]
 
 

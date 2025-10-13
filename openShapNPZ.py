@@ -23,8 +23,8 @@ def loadNpzFile(file_name):
 
 
 if __name__ == "__main__":
-    shapValues = loadNpzFile(r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\shap_restore_smaeshHWPostSyn_b2_Cut5.npz")
-    shapValues2 = loadNpzFile(r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\shap_restore_smaeshHWPostSyn_b2_Cut6.npz")
+    shapValues = loadNpzFile(r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\shap_restore_smaeshHWPostSyn_b2_Cut5_new.npz")
+    shapValues2 = loadNpzFile(r"C:\Users\Logan Reichling\Desktop\Ablation Study Work\shap_restore_smaeshHWPostSyn_b2_Cut6_new.npz")
     # with open("shapValueList.txt", "w") as outFile:
     #     for i, value in enumerate(shapValues):
     #         print(f"{i}: {value:.2f}")
@@ -37,8 +37,8 @@ if __name__ == "__main__":
     start = 0
     end = 505
     fig, ax = plt.subplots(figsize=(4, 3))
-    plt.plot(np.arange(start, end), shapValues2[start:end], label="Cut 6")
-    plt.plot(np.arange(start, end), shapValues[start:end], label="Cut 5", color='orange')
+    plt.plot(np.arange(start, end), shapValues2[start:end], label="Cut 6", )
+    plt.plot(np.arange(start, end), shapValues[start:end], label="Cut 5", color='orange', alpha=0.8)
     plt.tight_layout(rect=(-0.05,0.02,1,1))
     #plt.tight_layout(pad=1.3)
     plt.margins(x=0.02)
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     plt.ylabel("Mean |SHAP Value|")
     xTicks = [0, 125, 250, 375, 500]
     plt.xticks(xTicks, xTicks)
-    yTicks = [0, 10000, 20000, 30000]
-    plt.yticks(yTicks, ["0", "10k", "20k", "30k"])
+    yTicks = [0, 5000, 10000, 15000]
+    plt.yticks(yTicks, ["0", "5k", "10k", "15k"])
     # plt.legend(loc='upper right', prop={'size': 11.5})
 
     # force order on labels

@@ -96,8 +96,8 @@ if __name__ == "__main__":
     extendBinaryValuesToWidth       = True
     includeShapValueList            = False
 
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\New folder\plaintext5.vcd"
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\New folder\plaintext5_translated.vcd"
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\HardSide Project\projectvault_plaintext1.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\HardSide Project\projectvault_plaintext1_translated.vcd"
     optionalShapValueList = r".\shapValueList.txt"
 
     # Check params

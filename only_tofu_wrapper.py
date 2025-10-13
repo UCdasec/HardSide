@@ -1,9 +1,14 @@
+import hashlib
 import os
 import re
 import subprocess
 import time
 from datetime import datetime
-
+from matplotlib import pyplot as plt
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Image, Table, TableStyle
 import h5py
 import numpy as np
 from tqdm import tqdm
@@ -12,6 +17,16 @@ from tqdm import tqdm
 def getVCDNumber(vcdFilePath):
     pattern = re.compile(r"^.+?(?P<vcdNum>\d+)\.vcd$")
     return int(pattern.match(vcdFilePath).group('vcdNum'))
+
+
+def loadData(datasetPath):
+    createdDataset = np.load(datasetPath)
+    try:
+        loadedTraces, loadedPlaintext, loadedKey = createdDataset['power_trace'], createdDataset['plain_text'], createdDataset['key']
+    except KeyError:
+        print("ERROR: Dataset retrieval with dict keys 'power_trace', 'plain_text', and 'key' unsuccessful!")
+        loadedTraces, loadedPlaintext, loadedKey = None, None, None
+    return loadedTraces, loadedPlaintext, loadedKey
 
 
 def returnSortedVCDPathsFromDir(dirPath):
@@ -51,6 +66,126 @@ def generateTOFUSettings(tofuSettingsFilePath, traceName, tofuMode):
             jsonFile.write(f"{line}\n")
 
 
+def exportTOFUONLYReproducibilityStats(outputPath, startingTime, endingTime, totalTiming,
+                               totalTOFUTiming, totalCombineTiming, intermediaryFileDir, datasetKey,
+                               plaintextLen, jsonFilePath, outputTraceFilePath,
+                               decimalPlaintextsForTest):
+    _, datasetName = os.path.split(outputTraceFilePath+".npz")
+    t, p, k = loadData(outputTraceFilePath+".npz")
+    successfulCreationTest = True
+    plaintextOrderingTest = True
+    if t is None:
+        successfulCreationTest = False
+        plaintextOrderingTest = False
+    else:
+        for i2 in range(len(decimalPlaintextsForTest)):
+            for value in range(16):
+                if p[i2][value] != decimalPlaintextsForTest[i2][value]:
+                    print(f"ERROR: Plaintext mismatch at i = {i2}:{value}")
+                    plaintextOrderingTest = False
+
+    reprodLog = list()
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"-----> TOFU ONLY PROCESSING OF PREVIOUSLY GENERATED VCDS  <----- ")
+    reprodLog.append(f"Trace generation started on {startingTime.strftime('%m-%d-%Y_%H:%M:%S')} and finished on {endingTime.strftime('%m-%d-%Y_%H:%M:%S')}.")
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"Trace generation timings: ")
+    reprodLog.append(f"               Total time: {totalTiming:.2f} seconds")
+    reprodLog.append(f"     TOFU Generation time: {totalTOFUTiming:.2f} seconds")
+    reprodLog.append(f"    Combine H5 files time: {totalCombineTiming:.2f} seconds")
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"Trace generation input parameters:")
+    reprodLog.append(f"  SAVED_TRACE_BASE_DIRECTORY: {outputPath}")
+    reprodLog.append(f"         PLAINTEXT_FILE_PATH: {PLAINTEXT_FILE_PATH}")
+    reprodLog.append(f"              TOFU_DIRECTORY: {TOFU_DIRECTORY}")
+    reprodLog.append(f"                   TOFU_MODE: {TOFU_MODE}")
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"Trace generation dataset parameters:")
+    reprodLog.append(f"            Dataset Key: {datasetKey}")
+    reprodLog.append(f"           Dataset Name: {datasetName}")
+    reprodLog.append(f"         Dataset Length: {plaintextLen}")
+    reprodLog.append(f"  Dataset Hash (SHA256): {hashlib.sha256(open(outputTraceFilePath+'.npz', 'rb').read()).hexdigest()}")
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"Trace generation created files and folders:")
+    reprodLog.append(f"  VCD Directory: {intermediaryFileDir}")
+    reprodLog.append(f"          *** {plaintextLen} VCDs")
+    reprodLog.append(f"  Output Directory: {outputPath}")
+    reprodLog.append(f"          Intermediate Files Directory: {intermediaryFileDir}")
+    reprodLog.append(f"                          *** {plaintextLen}x2 pickle and H5 files")
+    reprodLog.append(f"                          *** {jsonFilePath}")
+    reprodLog.append(f"          Output Trace File: {outputTraceFilePath+'.npz'}")
+    reprodLog.append(f"############################################################################")
+    reprodLog.append(f"Trace generation tests:")
+    reprodLog.append(f"  Successful Creation Test: {'Pass' if successfulCreationTest else 'FAIL <------ !!!'}")
+    reprodLog.append(f"   Plaintext Ordering Test: {'Pass' if plaintextOrderingTest else 'FAIL <------ !!!'}")
+
+    reprodOutputLogFile = os.path.join(outputPath, f"reproducibility_log_{datetime.today().strftime('%m_%d_%Y__%H_%M')}.txt")
+    # Write each line to the log file
+    with open(reprodOutputLogFile, 'w') as f:
+        for line in reprodLog:
+            f.write(f"{line}\n")
+
+    plt.clf()
+    plt.xlabel("Timestamp")
+    plt.ylabel("Normalized Voltage Drop")
+    plt.plot(t[0], color='r')
+    plt.savefig(os.path.join(outputPath, "traceFigure.png"))
+
+    # Also create a PDF of the report
+    def setPDFMetadata(canvas, doc):
+        canvas.setTitle("Reproducibility Report")
+        canvas.setSubject("Side-channel Analysis Dataset Documentation")
+
+    pdf_path = os.path.join(outputPath, "reproducibility_report.pdf")
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        leftMargin=1 * inch,
+        rightMargin=1 * inch,
+        topMargin=1 * inch,
+        bottomMargin=1 * inch
+    )
+
+    # Custom styles
+    styles = getSampleStyleSheet()
+    style_normal = styles['Normal']
+    style_normal.fontName = 'Times-Roman'
+    style_normal.fontSize = 12
+    style_normal.leading = 14
+
+    style_header = ParagraphStyle(
+        'Header',
+        parent=style_normal,
+        fontSize=14,
+        spaceAfter=20,
+        alignment=1  # Center alignment
+    )
+
+    # Add log content to elements
+    elements = []
+    for line in reprodLog:
+        elements.append(Paragraph(line.replace(" * ", "&nbsp;&nbsp;* "), style_normal))
+
+    # elements.append(PageBreak())  # Put image on a new page
+    image_path = os.path.join(outputPath, "traceFigure.png")
+    elements.append(Paragraph(f"Example Trace from {datasetName} dataset:", style_header))
+
+    # Load and scale image
+    img = Image(image_path)
+    img_width = 6 * inch  # Set desired width
+    scaling_factor = img_width / img.drawWidth
+    img.drawWidth = img_width
+    img.drawHeight = img.drawHeight * scaling_factor
+    img_table = Table([[img]], colWidths=doc.width)
+    img_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+    elements.append(img_table)
+    doc.build(elements, onFirstPage=setPDFMetadata)  # Build PDF and export
+
+
+# Main
 if __name__ == "__main__":
     # Parameters
     TOFU_MODE = "HammingWeight"
@@ -62,6 +197,7 @@ if __name__ == "__main__":
 
 
     # Get path for each VCD in directory
+    startDateAndTime = datetime.now()
     startTraceCollectionTime = time.time()
     startTOFUTime = time.time()
     vcdFileList = returnSortedVCDPathsFromDir(COLLECTED_VCDS_DIR)
@@ -118,10 +254,9 @@ if __name__ == "__main__":
     endTraceCollectionTime = time.time()
     endTime = datetime.now()
     traceCollectionTime = endTraceCollectionTime - startTraceCollectionTime
-    # exportReproducibilityStats(BASE_DIR, startTime, endTime, traceCollectionTime, totalVCDGenerationTime,
-    #                            totalEmptyLineTime, totalTOFUTime, totalCombineTime, intermediateFiles,
-    #                            generationScripts, key, TRACES_TO_COLLECT, vivadoScriptPath, tclFilePath,
-    #                            currentSettingsFile, outputTraceFile, decimalPlaintexts)
-    print(f"Trace collection took {traceCollectionTime:.2f} seconds")
+    exportTOFUONLYReproducibilityStats(BASE_DIR, startDateAndTime, endTime, traceCollectionTime, totalTOFUTime,
+                               totalCombineTime, COLLECTED_VCDS_DIR, key, len(traces),
+                               currentSettingsFile, outputTraceFile, decimalPlaintexts)
+    print(f"TOFU processing and dataset forming took {traceCollectionTime:.2f} seconds")
     print(f"Trace collection finished at {datetime.now()}")
     print("All done! Exiting...")
