@@ -11,8 +11,10 @@ class VCDEntryDictionary:
     VCD_ENTRY_PATTERN                       = r"^\$var ([a-z]{1,}) (\d{1,}) (.+?) (.+?) (.*?) ?\$end$"
     VCD_VALUE_CHANGE_ENTRY_PATTERN          = r"^(b.+? |\d|x|z)(.+)$"
     VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN  = r"^(b[01]+? |\d)(.+)$"
-    VCD_DELAY_ENTRY_PATTERN                 = r"^(#\d+)$"
-    VCD_SCOPE_DEFINITION_PATTERN            = r"^\$scope .+? (.+?) \$end$"
+    VCD_DELAY_ENTRY_PATTERN                 = r"^#(\d+)$"
+    VCD_SCOPE_DEFINITION_PATTERN            = r"^\$scope (.+?) (.+?) \$end$"
+    VCD_SCOPE_END_PATTERN                   = r"^\$upscope \$end$"
+    VCD_END_DEFINITIONS_PATTERN             = r"^\$enddefinitions \$end$"
 
     # Constant Values
     BINARY_TO_HEX = {"0000": "0", "0001": "1", "0010": "2", "0011": "3", "0100": "4", "0101": "5",  "0110": "6",
@@ -45,16 +47,25 @@ class VCDEntryDictionary:
     identifierModuleDictionary = None # dict()  # {"id":"module_name", ...}
     compiledVCDEntryPattern = None
     compiledVCDValuePattern = None
+    compiledVCDDelayPattern = None
+    compiledVCDValueNoFloatPattern = None
+    compiledVCDScopeChangePattern = None
+    compiledVCDScopeEndPattern = None
+    compiledVCDDefinitionEndPattern = None
 
     def __init__(self):
         self.entries = list()
         self.identifierDictionary = defaultdict(list)
         self.identifierTypeDictionary = defaultdict(list)
         self.identifierWidthDictionary = dict()
-        self.compiledVCDEntryPattern        = re.compile(self.VCD_ENTRY_PATTERN)
-        self.compiledVCDValuePattern        = re.compile(self.VCD_VALUE_CHANGE_ENTRY_PATTERN)
-        self.compiledVCDDelayPattern        = re.compile(self.VCD_DELAY_ENTRY_PATTERN)
-        self.compiledVCDValueNoFloatPattern = re.compile(self.VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN)
+        self.compiledVCDEntryPattern         = re.compile(self.VCD_ENTRY_PATTERN)
+        self.compiledVCDValuePattern         = re.compile(self.VCD_VALUE_CHANGE_ENTRY_PATTERN)
+        self.compiledVCDDelayPattern         = re.compile(self.VCD_DELAY_ENTRY_PATTERN)
+        self.compiledVCDValueNoFloatPattern  = re.compile(self.VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN)
+        self.compiledVCDScopeChangePattern   = re.compile(self.VCD_SCOPE_DEFINITION_PATTERN)
+        self.compiledVCDScopeEndPattern      = re.compile(self.VCD_SCOPE_END_PATTERN)
+        self.compiledVCDDefinitionEndPattern = re.compile(self.compiledVCDDefinitionEndPattern)
+
 
     # Methods
     def addSignalEntry(self, entryType:str, width:int, identifier:str, name:str, depth:str):
@@ -96,8 +107,8 @@ if __name__ == "__main__":
     extendBinaryValuesToWidth       = True
     includeShapValueList            = False
 
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\HardSide Project\projectvault_plaintext1.vcd"
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\HardSide Project\projectvault_plaintext1_translated.vcd"
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\plaintext1.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\plaintext1_t.vcd"
     optionalShapValueList = r".\shapValueList.txt"
 
     # Check params
@@ -184,9 +195,9 @@ if __name__ == "__main__":
                 if includeDelayValuesAndTimestamps:
                     delayValue = potentialDelayMatch.groups()[0]
                     if includeShapValueList and len(shapValueList) != 0:  # Assume correct shap list is provided
-                        translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} - SHAP: [{shapValueList[counter]}] "
+                        translatedLine = f"Line {i+1}: #{delayValue} - HW_TS{counter} - SHAP: [{shapValueList[counter]}] "
                     else:
-                        translatedLine = f"Line {i+1}: {delayValue} - HW_TS{counter} "
+                        translatedLine = f"Line {i+1}: #{delayValue} - HW_TS{counter} "
                     if len(translatedLine) < timestampLineVisualFillToLength:
                         translatedLine += (timestampLineVisualFillToLength - len(translatedLine)) * "-"
                     finishedLines.append(translatedLine)

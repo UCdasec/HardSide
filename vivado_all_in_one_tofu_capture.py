@@ -230,7 +230,6 @@ def ensureParametersCorrect():
         exit(1)
 
 
-
 def loadData(datasetPath):
     createdDataset = np.load(datasetPath)
     try:

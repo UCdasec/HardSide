@@ -69,7 +69,7 @@ if __name__ == "__main__":
         if i == 0:
             label = "Orig."
         else:
-            label = f"Cut {i}"
+            label = f"Iter. {i}"
         plt.plot(np.arange(poiZoom[0], poiZoom[1]), zoomed_data, label=label, color=colorList[i])
 
     plt.margins(x=0, y=0.03)  # Tight plot bounds (no starting and ending whitespace)

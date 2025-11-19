@@ -189,12 +189,12 @@ def exportTOFUONLYReproducibilityStats(outputPath, startingTime, endingTime, tot
 if __name__ == "__main__":
     # Parameters
     TOFU_MODE = "HammingWeight"
-    TOFU_DIRECTORY = r""
-    PLAINTEXT_FILE_PATH = r""  # Make sure it is LE for SMAesH
-    FIXED_KEY = r""
-    COLLECTED_VCDS_DIR = r""
-    BASE_DIR = r""
-
+    TOFU_DIRECTORY = r"/home/logan/HardSide/tofu-master"
+    PLAINTEXT_FILE_PATH = r"/home/logan/HardSide/200k_plaintexts.txt"  # Make sure it is LE for SMAesH
+    FIXED_KEY = [60, 79, 207, 9, 136, 21, 247, 171, 166, 210, 174, 40, 22, 21, 126, 43]  # K1 LE
+    FIXED_KEY = [0xaa,0x80,0xd8,0xa7,0x84,0xd3,0x3f,0x5c,0x0b,0x90,0xa9,0x85,0x20,0x8e,0xff,0x4a]  # K2 BE
+    COLLECTED_VCDS_DIR = r"/home/logan/HardSide/Intermediary_Files"
+    BASE_DIR = r"/home/logan/HardSide"
 
     # Get path for each VCD in directory
     startDateAndTime = datetime.now()
