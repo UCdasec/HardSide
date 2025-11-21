@@ -4,6 +4,15 @@
 
 HardSide is a collection of tools and datasets used in the evaluation of pre-silicon simulated side-channel traces of cryptographic hardware designs with deep learning. In this repository, we provide the tools and scripts used to produce our HardSide simulated trace dataset and train deep learning SCA models over said traces. Scripts to perform testing and explainability analysis over the traces are also provided in this repository. 
 
+![hardsideSystemModelFigure](https://github.com/user-attachments/assets/ad146129-4e53-42a4-8b72-068bd85ca46c)
+
+Our simulation pipeline generally follows five main steps:
+ * Select a hardware design to evaluate
+ * Collect many Value Change Dump (VCD) files
+ * Convert the VCDs into simulated traces
+ * Train and test classifiers using partitions of the simulated traces
+ * Evaluate side-channel leakage of said traces and perform root cause analysis
+
 ## Reference
 
 When reporting results that use the code or datasets in this repository, please cite the paper below:
@@ -24,7 +33,7 @@ When reporting results that use the code or datasets in this repository, please 
 
 # Requirements
 
-Python 3.10 or greater is needed while Tensorflow 2.11.0 was used for all training. CUDA 12.1 and CUDNN 8 are installed via Deb files from the NVidia Website. Instructions on Deb installation can be found [here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/). 
+Python 3.10 or greater is needed while Tensorflow 2.11.0 was used for all model training. CUDA 12.1 and CUDNN 8 are installed via Deb files from the NVidia Website. Instructions on Deb installation can be found [here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/). 
 
 A Conda environment is used to collect the required packages. The ```environment.yml``` file included in the trainingAndShap subdirectory has the required packages listed and can be created new by conda via the following command ```conda env create --name hardside --file=environment.yml```. Minor modifications to the environment may be needed depending on the final environment. 
 
