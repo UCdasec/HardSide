@@ -53,4 +53,6 @@ Additional tools and scripts used for plot generation are located within the bas
 # Contacts
 Logan Reichling reichlln@mail.uc.edu
 
+Phuc Mai maipd@mail.uc.edu
+
 Boyang Wang boyang.wang@uc.edu
