@@ -4,6 +4,7 @@ import os.path
 import re
 from collections import defaultdict
 from enum import Enum
+from tqdm import tqdm
 
 
 class VCDEntryDictionary:
@@ -25,6 +26,7 @@ class VCDEntryDictionary:
         Wire = "wire"
         Reg = "reg"
         Parameter = "parameter"
+        Integer = "integer"
 
     class VCDEntry:
         vcdType = None
@@ -64,7 +66,7 @@ class VCDEntryDictionary:
         self.compiledVCDValueNoFloatPattern  = re.compile(self.VCD_VALUE_CHANGE_ENTRY_NOFLOAT_PATTERN)
         self.compiledVCDScopeChangePattern   = re.compile(self.VCD_SCOPE_DEFINITION_PATTERN)
         self.compiledVCDScopeEndPattern      = re.compile(self.VCD_SCOPE_END_PATTERN)
-        self.compiledVCDDefinitionEndPattern = re.compile(self.compiledVCDDefinitionEndPattern)
+        self.compiledVCDDefinitionEndPattern = re.compile(self.VCD_END_DEFINITIONS_PATTERN)
 
 
     # Methods
@@ -76,8 +78,10 @@ class VCDEntryDictionary:
             newEntryType = VCDEntryDictionary.VCDType.Reg
         elif entryType.lower() == "parameter":
             newEntryType = VCDEntryDictionary.VCDType.Parameter
+        elif entryType.lower() == "integer":
+            newEntryType = VCDEntryDictionary.VCDType.Integer
         else:
-            raise ValueError("entryType not 'wire' or 'reg'!")
+            raise ValueError("entryType not 'wire', 'reg', 'parameter', or 'integer'!")
         assert type(width) == int, "Type of width is not int"
         assert type(identifier) == str, "Type of identifier is not str"
         assert type(name) == str, "Type of name is not str"
@@ -107,8 +111,8 @@ if __name__ == "__main__":
     extendBinaryValuesToWidth       = True
     includeShapValueList            = False
 
-    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\plaintext1.vcd"
-    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\plaintext1_t.vcd"
+    vcdFilePath = r"C:\Users\Logan Reichling\Desktop\input0.vcd"
+    savedTranslatedVCDLinesPath = r"C:\Users\Logan Reichling\Desktop\input0_t.vcd"
     optionalShapValueList = r".\shapValueList.txt"
 
     # Check params
@@ -132,7 +136,7 @@ if __name__ == "__main__":
     # Read vcd declaration section and build dictionary
     vcdReader1 = VCDEntryDictionary()
     with open(vcdFilePath, "r") as inFile2:
-        for line in inFile2.readlines():
+        for line in tqdm(inFile2.readlines()):
             maybeMatch = re.match(vcdReader1.compiledVCDEntryPattern, line)
             if maybeMatch is not None:
                 cGroups = maybeMatch.groups()
@@ -149,7 +153,7 @@ if __name__ == "__main__":
         linesToTranslate = inFile3.readlines()
     finishedLines = list()
     counter = 0
-    for i, line in enumerate(linesToTranslate):
+    for i, line in tqdm(enumerate(linesToTranslate), total=len(linesToTranslate)):
         if includeUnknownAndFloatingValues:
             potentialMatch = re.match(vcdReader1.compiledVCDValuePattern, line)
         else:
