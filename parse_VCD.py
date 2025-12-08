@@ -148,6 +148,7 @@ if __name__ == "__main__":
                     print(cGroups)
                     exit(1)
 
+
     # Read VCD value lines and translate identifiers and print nicely
     with open(vcdFilePath, "r") as inFile3:
         linesToTranslate = inFile3.readlines()
