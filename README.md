@@ -19,7 +19,7 @@ When reporting results that use the code or datasets in this repository, please 
 
 (citation here)
 
-Our datasets and hardware AES sources used in this study can be accessed through the link below:
+Our datasets and hardware AES source projects used in this study can be accessed through the link below:
 
 (Link here)
 
