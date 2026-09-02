@@ -21,7 +21,7 @@ Logan Reichling, Phuc Mai, Muhib Khan, Kaiden Thomas, and Boyang Wang, "HardSide
 
 Our datasets and hardware AES source projects used in this study can be accessed through the link below:
 
-(Link here)
+https://mailuc-my.sharepoint.com/:f:/r/personal/wang2ba_ucmail_uc_edu/Documents/group/datasets_public/side_channel_pre_silicon_hardside_20251121?d=w427d77d4f9ac483fab5de72e33f53569&csf=1&web=1&e=eW2hIc
 
 Note: the above link need to be updated every 6 months due to certain settings of OneDrive. If you find the links are expired and you cannot access the data, please feel free to email us (boyang.wang@uc.edu). We will be update the links as soon as we can. Thanks!
 
