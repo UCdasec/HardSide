@@ -1,4 +1,4 @@
-# HardSide
+# HardSide: Pre-Silicon Side-Channel Analysis on Hardware AES 
 
 **The code is for research purpose only**
 
