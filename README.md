@@ -47,10 +47,13 @@ A Conda environment is used to collect the required packages. The ```environment
 The simulated trace pipeline requires Vivado 2023.2 (see [here](https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/vivado-design-tools/archive.html)) and TOFU (see [here](https://gitlab.lrz.de/tueisec/tofu/-/tree/master)) to generate synthetic traces. The Python script, vivado_all_in_one_tofu_capture.py, handles the interaction between the two automatically, but requires the design to be run first in simulation in order to generate the correct paths. The initial script parameters at the beginning of the file are straightforward to set for your own environment. These initial script parameters need to be changed before execution of the script. A special note about the batch size parameter, which may need to be tweaked depending on the hardware and design used, however in our experience for under 50k traces you can set the BATCH_SIZE to the TRACES_TO_COLLECT size (A memory leak exists in Vivado which will crash simulation if BATCH_SIZE is too low). The script should be compatible with both Windows and Linux based on the provided parameter, but peculiarities may exist in your setup that are not accounted for within the current version of the script. 
 
 Model training and SHAP analysis code exists within the trainingAndShap folder. These scripts should be passed parameters through the command line. Please see example usage of these scripts below (where results will appear in the final model directory):
+
 Training a ResNet-S model:
  - ```python3 train.py -i ./dataset/SMAesH_wo_endian_reverse_SyntheticHammingWeight_K1_50k.npz -o ./Result/SMAesH_wo_endian_reverse_HammingWeight/SMAesH_test_DLSCA_ResNetSingle_ID -tn 40000 -e 150 -tb 13 -lm ID -aw 0_406 -mt ResNetSingle -v```
+   
 Testing a model:
  - ```python3 test.py -i ./dataset/SMAesH_wo_endian_reverse_SyntheticHammingWeight_K1_50k.npz -m ./Result/SMAesH_wo_endian_reverse_HammingWeight/SMAesH_test_DLSCA_ResNetSingle_ID -tn 10000 -tb 13 -lm ID -aw 0_406 -v```
+   
 Calculating SHAP scores for that model:
  - ```python3 shapScores.py -i ./dataset/SMAesH_wo_endian_reverse_SyntheticHammingWeight_K1_50k.npz -m ./Result/SMAesH_wo_endian_reverse_HammingWeight/SMAesH_test_DLSCA_ResNetSingle_ID/model/best_model.h5 -tn 40000 -tt 500 -tb 13 -lm ID -aw 0_406 -mt ResNetSingle```
 
