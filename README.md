@@ -27,7 +27,7 @@ Note: the above link need to be updated every 6 months due to certain settings o
 
 ## Tutorial Documents and Videos
 
-We provide a tutorial document (_Tutorial_SCA_Pre-Silicon_Hardware_AES.pdf_), which describes how to establish our pipeline and collect simulated traces from pre-silicon and also power traces from CW305. In addition, we also provide provide a list of tutorial videos covering these detailed steps mentioned in the tutorial document. 
+We provide a tutorial document (_Tutorial_SCA_Pre-Silicon_Hardware_AES.pdf_), which describes how to establish our pipeline and collect simulated traces from pre-silicon and also power traces from CW305. In addition, we also  provide a list of tutorial videos covering these detailed steps mentioned in the tutorial document. 
 
 Video Links: 
 
