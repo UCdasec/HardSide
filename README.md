@@ -25,6 +25,19 @@ https://mailuc-my.sharepoint.com/:f:/r/personal/wang2ba_ucmail_uc_edu/Documents/
 
 Note: the above link need to be updated every 6 months due to certain settings of OneDrive. If you find the links are expired and you cannot access the data, please feel free to email us (boyang.wang@uc.edu). We will be update the links as soon as we can. Thanks!
 
+## Tutorial Documents and Videos
+
+We provide a tutorial document, which describes how to establish our pipeline and collect simulated traces from pre-silicon and also power traces from CW305. In addition, we also provide provide a list of tutorial videos covering these detailed steps mentioned in the tutorial document. 
+
+Video Links: 
+
+Videos for Unmasked AES -- ProjectVault 
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part1/1_g57ocyq7
+
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part2/1_2vgal9mh
+
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part3/1_z2f7vcmb
+
 # Content
 
  * ```vivado_all_in_one_tofu_capture.py``` - Combines generation and processing steps of the simulated trace pipeline using Vivado and TOFU to create a final simulated trace dataset.
