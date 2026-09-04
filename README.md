@@ -17,7 +17,7 @@ Our simulation pipeline generally follows five main steps:
 
 When reporting results that use the code or datasets in this repository, please cite the paper below:
 
-Logan Reichling, Phuc Mai, Muhib Khan, Kaiden Thomas, and Boyang Wang, "HardSide: Pre-Silicon Side-Channel Analysis on Hardware AES with Deep Learning," IEEE International Conference on Physical Assurance and Inspection of Electronics (**PAINE 2026**), Phoenix AZ, October 27-29, 2026 (_to be published_)
+Logan Reichling, Phuc Mai, Muhib Khan, Kaiden Thomas, and Boyang Wang, "HardSide: Pre-Silicon Side-Channel Analysis on Hardware AES with Deep Learning," IEEE International Conference on Physical Assurance and Inspection of Electronics (**PAINE 2026**), Phoenix AZ, October 27-29, 2026
 
 Our datasets and hardware AES source projects used in this study can be accessed through the link below:
 
