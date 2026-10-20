@@ -38,6 +38,14 @@ https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-Proj
 
 https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part3/1_z2f7vcmb
 
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-PreSilicon/1_o1xe50g5 
+
+Videos for masked AES -- SMAesH 
+
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-MaskedAES-SMAesH/1_v4ehdxjo 
+
+https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-MaskedAES-SMAesH-PreSilicon/1_5slahs7k
+
 # Content
 
  * ```vivado_all_in_one_tofu_capture.py``` - Combines generation and processing steps of the simulated trace pipeline using Vivado and TOFU to create a final simulated trace dataset.
