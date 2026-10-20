@@ -32,6 +32,7 @@ We provide a tutorial document (_Tutorial_SCA_Pre-Silicon_Hardware_AES.pdf_), wh
 Video Links: 
 
 Videos for Unmasked AES -- ProjectVault 
+
 https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part1/1_g57ocyq7
 
 https://ceas.mediaspace.kaltura.com/media/Tutorial-SCA-Hardware-UnmaskedAES-ProjectVault-Part2/1_2vgal9mh
