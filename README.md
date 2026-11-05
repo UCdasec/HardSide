@@ -19,7 +19,7 @@ When reporting results that use the code or datasets in this repository, please 
 
 Logan Reichling, Phuc Mai, Muhib Khan, Kaiden Thomas, and Boyang Wang, "HardSide: Pre-Silicon Side-Channel Analysis on Hardware AES with Deep Learning," IEEE International Conference on Physical Assurance and Inspection of Electronics (**PAINE 2026**), Phoenix AZ, October 27-29, 2026
 
-Our datasets and hardware AES source projects used in this study can be accessed through the link below (last modified Nov 2026):
+Our datasets and hardware AES source projects used in this study can be accessed through the link below (**last modified Nov 2026**):
 
 https://mailuc-my.sharepoint.com/:f:/g/personal/wang2ba_ucmail_uc_edu/IgDUd31CrPk_SKtd5y4z9TVpASZHx7Ivfru19NQR8u4GdNo?e=ExeKy4
 
